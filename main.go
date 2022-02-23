@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -88,6 +89,9 @@ func main() {
 	for i := 0; i < len(cnf.Notifiers); i++ {
 		n := &cnf.Notifiers[i]
 		if nrRepo.knowHandler(n.Handler) {
+			if len(n.Template) > 0 {
+				n.Template = strings.ReplaceAll(n.Template, "{UI}", cnf.UI)
+			}
 			nrRepo.makeNotifier(n)
 		}
 	}
