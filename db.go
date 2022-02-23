@@ -70,10 +70,10 @@ func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err
 	var c int
 	if err = row.Scan(&c); err == sql.ErrNoRows {
 		mustNotify = true
-		err = nil
+		if _, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano()); err != nil {
+			return
+		}
 	}
-
-	_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano())
 
 	err = tx.Commit()
 	return
