@@ -49,7 +49,7 @@ func init() {
 	}
 
 	var na bool
-	for i:=0; i<len(cnf.Notifiers); i++ {
+	for i := 0; i < len(cnf.Notifiers); i++ {
 		if na = nrRepo.knowHandler(cnf.Notifiers[i].Handler); na {
 			break
 		}
@@ -71,7 +71,7 @@ func main() {
 
 	for i := 0; i < len(cnf.Listeners); i++ {
 		l := &cnf.Listeners[i]
-		if _, ok := lnfRepo[l.Handler]; ok {
+		if lsRepo.knowHandler(l.Handler) {
 			ctx, cancel := context.WithCancel(context.Background())
 			listener := lsRepo.makeListener(l.Handler, l.Addr)
 			log.Printf("starting listener '%s' at '%s'\n", l.Handler, l.Addr)
@@ -82,6 +82,13 @@ func main() {
 				}
 			}()
 			lsRepo.addLC(listener, cancel)
+		}
+	}
+
+	for i := 0; i < len(cnf.Notifiers); i++ {
+		n := &cnf.Notifiers[i]
+		if nrRepo.knowHandler(n.Handler) {
+			nrRepo.makeNotifier(n)
 		}
 	}
 

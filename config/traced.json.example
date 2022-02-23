@@ -22,7 +22,8 @@
       "handler": "telegram",
       "addr": "https://api.telegram.org/bot000:XXX/sendMessage",
       "chatID": "-000111",
-      "template": "New traceID (https://trace.com/{TID})[#{TID}]."
+      "template": "New traceID (https://trace.com/{TID})[#{TID}].",
+      "format": "Markdown"
     }
   ]
 }

@@ -62,6 +62,11 @@ func (w worker) work(bus chan []byte) {
 			} else if w.cnf.Verbose {
 				log.Printf("messaged %s flushed\n", msg.ID)
 			}
+
+			ctx := context.Background()
+			if err := nrRepo.notify(ctx, msg.ID); err != nil && w.cnf.Verbose {
+				log.Printf("notify failed: %s\n", err.Error())
+			}
 		case <-w.ctx.Done():
 			if w.cnf.Verbose {
 				log.Printf("worker #%d stopped\n", w.id)
