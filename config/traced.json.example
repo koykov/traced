@@ -1,5 +1,9 @@
 {
-  "db": "mysql://user:pass@localhost:3306/dbname",
+  "db": {
+    "driver": "postgres",
+    "dsn": "postgres://user:pass@127.0.0.1:5432/dbname?sslmode=disable",
+    "qpt": "$N"
+  },
   "ui": "http://localhost:8080",
   "buf_size": 512,
   "workers": 4,
@@ -7,7 +11,8 @@
   "listeners": [
     {
       "handler": "http",
-      "addr": ":3356/post-msg"
+      "addr": ":3356",
+      "path": "/post-msg"
     }
   ],
   "notifiers": [
@@ -16,13 +21,13 @@
       "addr": "https://hooks.slack.com/services/QWE/RTY/fake-token",
       "channel": "XXX",
       "username": "YYY",
-      "template": "New traceID <https://trace.com/{TID}|#{TID}>."
+      "template": "New traceID <{UI}/{TID}|#{TID}>."
     },
     {
       "handler": "telegram",
       "addr": "https://api.telegram.org/bot000:XXX/sendMessage",
       "chatID": "-000111",
-      "template": "New traceID (https://trace.com/{TID})[#{TID}].",
+      "template": "New traceID [#{TID}]({UI}#{TID}).",
       "format": "Markdown"
     }
   ]
