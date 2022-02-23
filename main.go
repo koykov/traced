@@ -58,7 +58,7 @@ func init() {
 		log.Fatalln("no notifiers available")
 	}
 
-	if err = dbConnect(cnf.DB); err != nil {
+	if err = dbConnect(&cnf.DB); err != nil {
 		log.Fatalf("couldn't connect to DB: %s\n", err.Error())
 	}
 

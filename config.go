@@ -8,8 +8,8 @@ import (
 )
 
 type Config struct {
-	DB string `json:"db"`
-	UI string `json:"ui"`
+	DB DBConfig `json:"db"`
+	UI string   `json:"ui"`
 
 	BufSize uint `json:"buf_size"`
 	Workers uint `json:"workers"`
@@ -18,6 +18,12 @@ type Config struct {
 
 	Listeners []Listener               `json:"listeners"`
 	Notifiers []traceID.NotifierConfig `json:"notifiers"`
+}
+
+type DBConfig struct {
+	Driver string `json:"driver"`
+	DSN    string `json:"dsn"`
+	QPT    string `json:"qpt,omitempty"`
 }
 
 type Listener struct {

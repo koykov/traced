@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,20 +14,26 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var dbi *sql.DB
+const (
+	defaultQPT = "?"
+)
 
-func dbConnect(addr string) (err error) {
-	var di int
-	if di = strings.Index(addr, "://"); di == -1 {
-		err = fmt.Errorf("couldn't get driver name from DSN '%s'", addr)
-		return
-	}
-	drv := addr[:di]
-	if len(drv) == 0 {
+var (
+	dbi *sql.DB
+	qpt string
+)
+
+func dbConnect(dbc *DBConfig) (err error) {
+	if len(dbc.Driver) == 0 {
 		return errors.New("empty DB driver")
 	}
-	addr = addr[di+3:]
-	if dbi, err = sql.Open(drv, addr); err != nil {
+	if len(dbc.Driver) == 0 {
+		return errors.New("empty DSN string")
+	}
+	if qpt = dbc.QPT; len(qpt) == 0 {
+		qpt = defaultQPT
+	}
+	if dbi, err = sql.Open(dbc.Driver, dbc.DSN); err != nil {
 		return
 	}
 	if err = dbi.Ping(); err != nil {
@@ -53,21 +59,21 @@ func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err
 		k := fastconv.B2S(msg.Buf[lo:hi])
 		lo, hi = row.Value.Decode()
 		v := fastconv.B2S(msg.Buf[lo:hi])
-		_, err = tx.ExecContext(ctx, "insert into trace_log(tid, svc, thid, ts, lvl, typ, nm, val) values($1, $2, $3, $4, $5, $6, $7, $8)",
+		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, thid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?)"),
 			msg.ID, msg.Service, row.ThreadID, row.Time, row.Level, row.Type, k, v)
 		if err != nil {
 			return
 		}
 	}
 
-	row := tx.QueryRowContext(ctx, "select count(ts) as c from trace_uniq where tid=$1", msg.ID)
+	row := tx.QueryRowContext(ctx, fmtQuery("select count(ts) as c from trace_uniq where tid=?"), msg.ID)
 	var c int
 	if err = row.Scan(&c); err == sql.ErrNoRows {
 		mustNotify = true
 		err = nil
 	}
 
-	_, err = tx.ExecContext(ctx, "insert into trace_uniq(tid, ts) values($1, $2)", msg.ID, time.Now().UnixNano())
+	_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano())
 
 	err = tx.Commit()
 	return
@@ -78,4 +84,29 @@ func dbClose() error {
 		return nil
 	}
 	return dbi.Close()
+}
+
+func fmtQuery(query string) string {
+	if !strings.Contains(query, "?") || qpt == defaultQPT {
+		return query
+	}
+	buf := make([]byte, 0, len(query)*2)
+	p := strings.Index(query, "?")
+	var i int
+	for {
+		buf = append(buf, query[:p]...)
+		if len(qpt) == 2 && qpt[1] == 'N' {
+			i++
+			buf = append(buf, qpt[0])
+			buf = strconv.AppendInt(buf, int64(i), 10)
+		} else {
+			buf = append(buf, qpt...)
+		}
+		query = query[p+1:]
+		if p = strings.Index(query, "?"); p == -1 {
+			break
+		}
+	}
+	buf = append(buf, query...)
+	return fastconv.B2S(buf)
 }
