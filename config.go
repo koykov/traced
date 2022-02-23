@@ -16,7 +16,7 @@ type Config struct {
 
 	Verbose bool `json:"verbose"`
 
-	Listeners []Listener               `json:"listeners"`
+	Listeners []traceID.ListenerConfig `json:"listeners"`
 	Notifiers []traceID.NotifierConfig `json:"notifiers"`
 }
 
@@ -24,11 +24,6 @@ type DBConfig struct {
 	Driver string `json:"driver"`
 	DSN    string `json:"dsn"`
 	QPT    string `json:"qpt,omitempty"`
-}
-
-type Listener struct {
-	Handler string `json:"handler"`
-	Addr    string `json:"addr"`
 }
 
 func ParseConfig(filepath string) (*Config, error) {

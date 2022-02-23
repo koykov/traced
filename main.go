@@ -73,7 +73,7 @@ func main() {
 		l := &cnf.Listeners[i]
 		if lsRepo.knowHandler(l.Handler) {
 			ctx, cancel := context.WithCancel(context.Background())
-			listener := lsRepo.makeListener(l.Handler, l.Addr)
+			listener := lsRepo.makeListener(l)
 			log.Printf("starting listener '%s' at '%s'\n", l.Handler, l.Addr)
 			go func() {
 				if err := listener.Listen(ctx, bus); err != nil {

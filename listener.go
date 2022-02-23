@@ -8,7 +8,7 @@ import (
 	"github.com/koykov/traceID/listener"
 )
 
-type listenerNewFn func(string) traceID.Listener
+type listenerNewFn func(config *traceID.ListenerConfig) traceID.Listener
 
 type listenerRepo struct {
 	mux sync.Mutex
@@ -22,9 +22,9 @@ type listenerCancel struct {
 
 var (
 	lnfRepo = map[string]listenerNewFn{
-		"http": func(addr string) traceID.Listener {
+		"http": func(conf *traceID.ListenerConfig) traceID.Listener {
 			l := listener.HTTP{}
-			l.SetAddr(addr)
+			l.SetConfig(conf)
 			return &l
 		},
 	}
@@ -50,7 +50,7 @@ func (r *listenerRepo) knowHandler(handler string) bool {
 	return ok
 }
 
-func (r *listenerRepo) makeListener(handler, addr string) traceID.Listener {
-	l := lnfRepo[handler](addr)
+func (r *listenerRepo) makeListener(conf *traceID.ListenerConfig) traceID.Listener {
+	l := lnfRepo[conf.Handler](conf)
 	return l
 }
