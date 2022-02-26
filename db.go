@@ -59,8 +59,8 @@ func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err
 		k := fastconv.B2S(msg.Buf[lo:hi])
 		lo, hi = row.Value.Decode()
 		v := fastconv.B2S(msg.Buf[lo:hi])
-		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, thid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?)"),
-			msg.ID, msg.Service, row.ThreadID, row.Time, row.Level, row.Type, k, v)
+		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+			msg.ID, msg.Service, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
 		if err != nil {
 			return
 		}
@@ -68,7 +68,7 @@ func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err
 
 	row := tx.QueryRowContext(ctx, fmtQuery("select count(ts) as c from trace_uniq where tid=?"), msg.ID)
 	var c int
-	if err = row.Scan(&c); err == sql.ErrNoRows {
+	if err = row.Scan(&c); c == 0 || err == sql.ErrNoRows {
 		mustNotify = true
 		if _, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano()); err != nil {
 			return
