@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -63,6 +65,10 @@ func init() {
 		log.Fatalf("couldn't connect to DB: %s\n", err.Error())
 	}
 
+	if cnf.API != nil && cnf.API.Port == 0 {
+		log.Fatalln("empty API port provided")
+	}
+
 	i10n = make(chan os.Signal, 1)
 	signal.Notify(i10n, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 }
@@ -100,6 +106,16 @@ func main() {
 		ctx, cancel := context.WithCancel(context.Background())
 		w := wsRepo.makeWorker(ctx, cancel, cnf)
 		go w.work(bus)
+	}
+
+	if cnf.API != nil {
+		addr := fmt.Sprintf("%s:%d", cnf.API.Host, cnf.API.Port)
+		go func() {
+			log.Printf("starting HTTP server at '%s'\n", addr)
+			if err := http.ListenAndServe(addr, &TraceHTTP{}); err != nil {
+				log.Fatalf("couldn't start HTTP server: %s\n", err.Error())
+			}
+		}()
 	}
 
 	<-i10n

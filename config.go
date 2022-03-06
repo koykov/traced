@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	DB DBConfig `json:"db"`
-	UI string   `json:"ui"`
+	API *APIConfig `json:"api"`
+	DB  DBConfig   `json:"db"`
+	UI  string     `json:"ui"`
 
 	BufSize uint `json:"buf_size"`
 	Workers uint `json:"workers"`
@@ -18,6 +19,11 @@ type Config struct {
 
 	Listeners []traceID.ListenerConfig `json:"listeners"`
 	Notifiers []traceID.NotifierConfig `json:"notifiers"`
+}
+
+type APIConfig struct {
+	Host string `json:"host"`
+	Port uint   `json:"port"`
 }
 
 type DBConfig struct {
