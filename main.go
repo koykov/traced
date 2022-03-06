@@ -70,7 +70,7 @@ func init() {
 	}
 
 	i10n = make(chan os.Signal, 1)
-	signal.Notify(i10n, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(i10n, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 }
 
 func main() {
