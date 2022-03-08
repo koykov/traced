@@ -42,7 +42,7 @@ func dbConnect(dbc *DBConfig) (err error) {
 	return
 }
 
-func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err error) {
+func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err error) {
 	var tx *sql.Tx
 	if tx, err = dbi.Begin(); err != nil {
 		return
@@ -76,6 +76,34 @@ func dbFlushMsg(msg *traceID.Message, ctx context.Context) (mustNotify bool, err
 	}
 
 	err = tx.Commit()
+	return
+}
+
+func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHeader, err error) {
+	if limit == 0 {
+		limit = 50
+	}
+	query := "select * from trace_uniq where tid like ? order by ts desc limit ?"
+	pattern = "%" + pattern + "%"
+
+	var rows *sql.Rows
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), pattern, limit); err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var (
+			tid string
+			ts  int64
+		)
+		if err = rows.Scan(&tid, &ts); err != nil {
+			return
+		}
+		r = append(r, MessageHeader{
+			ID: tid,
+			DT: string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+		})
+	}
 	return
 }
 

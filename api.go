@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 )
@@ -8,9 +9,9 @@ import (
 type TraceHTTP struct{}
 
 type TraceResponse struct {
-	Status  int    `json:"status,omitempty"`
-	Error   string `json:"error,omitempty"`
-	Message string `json:"message,omitempty"`
+	Status  int         `json:"status,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	Payload interface{} `json:"payload,omitempty"`
 }
 
 func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +33,16 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp.Status = http.StatusOK
 	switch {
 	case r.URL.Path == "/api/v1/ping":
-		resp.Message = "pong"
+		resp.Payload = "pong"
+
+	case r.URL.Path == "/api/v1/list":
+		rows, err := dbListMsg(context.Background(), "", 0)
+		if err != nil {
+			resp.Status = http.StatusInternalServerError
+			resp.Error = err.Error()
+			return
+		}
+		resp.Payload = rows
 
 	default:
 		resp.Status = http.StatusNotFound

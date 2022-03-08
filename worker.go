@@ -61,7 +61,7 @@ func (w worker) work(bus chan []byte) {
 				mustNotify bool
 				err        error
 			)
-			if mustNotify, err = dbFlushMsg(&msg, context.Background()); err != nil {
+			if mustNotify, err = dbFlushMsg(context.Background(), &msg); err != nil {
 				log.Printf("message flush failed: %s\n", err.Error())
 			} else if w.cnf.Verbose {
 				log.Printf("messaged %s flushed\n", msg.ID)
