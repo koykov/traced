@@ -53,6 +53,15 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		}
 	}(tx, err)
 
+	if msg.CheckFlag(traceID.FlagOverwrite) {
+		if _, err = tx.ExecContext(ctx, fmtQuery("delete from trace_log where tid = ?"), msg.ID); err != nil {
+			return
+		}
+		if _, err = tx.ExecContext(ctx, fmtQuery("delete from trace_uniq where tid = ?"), msg.ID); err != nil {
+			return
+		}
+	}
+
 	for i := 0; i < len(msg.Rows); i++ {
 		row := &msg.Rows[i]
 		lo, hi := row.Key.Decode()
