@@ -116,6 +116,55 @@ func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHead
 	return
 }
 
+func dbMsgTree(ctx context.Context, id string) (msg *MessageTree, err error) {
+	query := "select id, tid, svc, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? order by svc, tid, id"
+	var rows *sql.Rows
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id); err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	msg = &MessageTree{ID: id}
+	var (
+		csvc        string
+		crid, cthid int
+	)
+	crid, cthid = -1, -1
+	for rows.Next() {
+		var (
+			id1, thid, rid, lvl, typ int
+			ts                       int64
+			tid, svc, nm, val        string
+		)
+		if err = rows.Scan(&id1, &tid, &svc, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+			return
+		}
+		if svc != csvc {
+			csvc = svc
+			msg.Services = append(msg.Services, MessageService{ID: svc})
+		}
+		svci := &msg.Services[len(msg.Services)-1]
+		if thid != cthid {
+			cthid = thid
+			svci.Threads = append(svci.Threads, MessageThread{ID: uint(thid)})
+		}
+		thi := &svci.Threads[len(svci.Threads)-1]
+		if rid != crid {
+			crid = rid
+			thi.Records = append(thi.Records, MessageRecord{ID: uint(rid)})
+		}
+		ri := &thi.Records[len(thi.Records)-1]
+		ri.Rows = append(ri.Rows, MessageRow{
+			ID:    uint(id1),
+			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+			Level: traceID.LogLevel(lvl).String(),
+			Type:  traceID.EntryType(typ).String(),
+			Name:  nm,
+			Value: val,
+		})
+	}
+	return
+}
+
 func dbClose() error {
 	if dbi == nil {
 		return nil

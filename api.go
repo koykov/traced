@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"regexp"
 )
 
 type TraceHTTP struct{}
@@ -13,6 +14,10 @@ type TraceResponse struct {
 	Error   string      `json:"error,omitempty"`
 	Payload interface{} `json:"payload,omitempty"`
 }
+
+var (
+	reTraceView = regexp.MustCompile(`/api/v\d+/view/(.*)`)
+)
 
 func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -43,6 +48,16 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		resp.Payload = rows
+
+	case reTraceView.MatchString(r.URL.Path):
+		m := reTraceView.FindStringSubmatch(r.URL.Path)
+		msg, err := dbMsgTree(context.Background(), m[1])
+		if err != nil {
+			resp.Status = http.StatusInternalServerError
+			resp.Error = err.Error()
+			return
+		}
+		resp.Payload = msg
 
 	default:
 		resp.Status = http.StatusNotFound
