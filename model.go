@@ -18,6 +18,7 @@ type MessageService struct {
 type MessageThread struct {
 	ID      uint            `json:"id"`
 	Records []MessageRecord `json:"records"`
+	Threads []MessageThread `json:"threads"`
 }
 
 type MessageRecord struct {

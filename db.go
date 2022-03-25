@@ -117,52 +117,81 @@ func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHead
 }
 
 func dbMsgTree(ctx context.Context, id string) (msg *MessageTree, err error) {
-	query := "select id, tid, svc, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? order by svc, tid, id"
+	query := "select svc, min(ts) as ts from trace_log where tid=? group by svc order by ts"
 	var rows *sql.Rows
 	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id); err != nil {
 		return
 	}
 	defer func() { _ = rows.Close() }()
 	msg = &MessageTree{ID: id}
-	var (
-		csvc        string
-		crid, cthid int
-	)
-	crid, cthid = -1, -1
 	for rows.Next() {
 		var (
-			id1, thid, rid, lvl, typ int
-			ts                       int64
-			tid, svc, nm, val        string
+			svc string
+			ts  int64
 		)
-		if err = rows.Scan(&id1, &tid, &svc, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+		if err = rows.Scan(&svc, &ts); err != nil {
 			return
 		}
-		if svc != csvc {
-			csvc = svc
-			msg.Services = append(msg.Services, MessageService{ID: svc})
-		}
+		msg.Services = append(msg.Services, MessageService{ID: svc})
 		svci := &msg.Services[len(msg.Services)-1]
-		if thid != cthid {
-			cthid = thid
-			svci.Threads = append(svci.Threads, MessageThread{ID: uint(thid)})
+		svci.Threads = append(svci.Threads, MessageThread{ID: 0})
+		thr := &svci.Threads[len(svci.Threads)-1]
+		if err = dbWalkThr(ctx, id, svc, thr); err != nil {
+			return
 		}
-		thi := &svci.Threads[len(svci.Threads)-1]
-		if rid != crid {
-			crid = rid
-			thi.Records = append(thi.Records, MessageRecord{ID: uint(rid)})
+	}
+
+	return
+}
+
+func dbWalkThr(ctx context.Context, id, svc string, thr *MessageThread) error {
+	query := "select id, tid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? and thid=? order by ts"
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id, svc, thr.ID); err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	crid := -1
+	for rows.Next() {
+		var (
+			id1, rid, lvl, typ uint
+			ts                 int64
+			tid, nm, val       string
+		)
+		if err = rows.Scan(&id1, &tid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+			return err
 		}
-		ri := &thi.Records[len(thi.Records)-1]
+
+		if crid != int(rid) {
+			crid = int(rid)
+			thr.Records = append(thr.Records, MessageRecord{ID: rid})
+		}
+		ri := &thr.Records[len(thr.Records)-1]
 		ri.Rows = append(ri.Rows, MessageRow{
-			ID:    uint(id1),
+			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
 			Level: traceID.LogLevel(lvl).String(),
 			Type:  traceID.EntryType(typ).String(),
 			Name:  nm,
 			Value: val,
 		})
+
+		if typ == uint(traceID.EntryAcquireThread) {
+			thid, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return err
+			}
+			thr.Threads = append(thr.Threads, MessageThread{ID: uint(thid)})
+			thr1 := &thr.Threads[len(thr.Threads)-1]
+			if err := dbWalkThr(ctx, id, svc, thr1); err != nil {
+				return err
+			}
+		}
 	}
-	return
+	return nil
 }
 
 func dbClose() error {
