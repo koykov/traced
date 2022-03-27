@@ -41,7 +41,7 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp.Payload = "pong"
 
 	case r.URL.Path == "/api/v1/list":
-		rows, err := dbListMsg(context.Background(), "", 0)
+		rows, err := dbTraceList(context.Background(), "", 0)
 		if err != nil {
 			resp.Status = http.StatusInternalServerError
 			resp.Error = err.Error()
@@ -51,17 +51,17 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case reTraceView.MatchString(r.URL.Path):
 		m := reTraceView.FindStringSubmatch(r.URL.Path)
-		msg, err := dbMsgTree(context.Background(), m[1])
+		tree, err := dbTraceTree(context.Background(), m[1])
 		if err != nil {
 			resp.Status = http.StatusInternalServerError
 			resp.Error = err.Error()
 			return
 		}
-		if len(msg.Services) == 0 {
+		if len(tree.Services) == 0 {
 			resp.Status = http.StatusNotFound
 			return
 		}
-		resp.Payload = msg
+		resp.Payload = tree
 
 	default:
 		resp.Status = http.StatusNotFound

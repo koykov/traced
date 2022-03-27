@@ -88,7 +88,7 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 	return
 }
 
-func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHeader, err error) {
+func dbTraceList(ctx context.Context, pattern string, limit uint) (r []TraceHeader, err error) {
 	if limit == 0 {
 		limit = 50
 	}
@@ -108,7 +108,7 @@ func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHead
 		if err = rows.Scan(&tid, &ts); err != nil {
 			return
 		}
-		r = append(r, MessageHeader{
+		r = append(r, TraceHeader{
 			ID: tid,
 			DT: string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
 		})
@@ -116,14 +116,14 @@ func dbListMsg(ctx context.Context, pattern string, limit uint) (r []MessageHead
 	return
 }
 
-func dbMsgTree(ctx context.Context, id string) (msg *MessageTree, err error) {
+func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 	query := "select svc, min(ts) as ts from trace_log where tid=? group by svc order by ts"
 	var rows *sql.Rows
 	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id); err != nil {
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	msg = &MessageTree{ID: id}
+	msg = &TraceTree{ID: id}
 	for rows.Next() {
 		var (
 			svc string
@@ -132,9 +132,9 @@ func dbMsgTree(ctx context.Context, id string) (msg *MessageTree, err error) {
 		if err = rows.Scan(&svc, &ts); err != nil {
 			return
 		}
-		msg.Services = append(msg.Services, MessageService{ID: svc})
+		msg.Services = append(msg.Services, TraceService{ID: svc})
 		svci := &msg.Services[len(msg.Services)-1]
-		svci.Threads = append(svci.Threads, MessageThread{ID: 0})
+		svci.Threads = append(svci.Threads, TraceThread{ID: 0})
 		thr := &svci.Threads[len(svci.Threads)-1]
 		if err = dbWalkThr(ctx, id, svc, thr); err != nil {
 			return
@@ -144,7 +144,7 @@ func dbMsgTree(ctx context.Context, id string) (msg *MessageTree, err error) {
 	return
 }
 
-func dbWalkThr(ctx context.Context, id, svc string, thr *MessageThread) error {
+func dbWalkThr(ctx context.Context, id, svc string, thr *TraceThread) error {
 	query := "select id, tid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? and thid=? order by ts"
 	var (
 		rows *sql.Rows
@@ -167,10 +167,10 @@ func dbWalkThr(ctx context.Context, id, svc string, thr *MessageThread) error {
 
 		if crid != int(rid) {
 			crid = int(rid)
-			thr.Records = append(thr.Records, MessageRecord{ID: rid})
+			thr.Records = append(thr.Records, TraceRecord{ID: rid})
 		}
 		ri := &thr.Records[len(thr.Records)-1]
-		ri.Rows = append(ri.Rows, MessageRow{
+		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
 			Level: traceID.LogLevel(lvl).String(),
@@ -184,7 +184,7 @@ func dbWalkThr(ctx context.Context, id, svc string, thr *MessageThread) error {
 			if err != nil {
 				return err
 			}
-			thr.Threads = append(thr.Threads, MessageThread{ID: uint(thid)})
+			thr.Threads = append(thr.Threads, TraceThread{ID: uint(thid)})
 			thr1 := &thr.Threads[len(thr.Threads)-1]
 			if err := dbWalkThr(ctx, id, svc, thr1); err != nil {
 				return err

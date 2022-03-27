@@ -1,32 +1,32 @@
 package main
 
-type MessageHeader struct {
+type TraceHeader struct {
 	ID string `json:"id"`
 	DT string `json:"dt"`
 }
 
-type MessageTree struct {
-	ID       string           `json:"id"`
-	Services []MessageService `json:"services"`
+type TraceTree struct {
+	ID       string         `json:"id"`
+	Services []TraceService `json:"services"`
 }
 
-type MessageService struct {
+type TraceService struct {
 	ID      string
-	Threads []MessageThread `json:"threads"`
+	Threads []TraceThread `json:"threads"`
 }
 
-type MessageThread struct {
-	ID      uint            `json:"id"`
-	Records []MessageRecord `json:"records"`
-	Threads []MessageThread `json:"threads"`
+type TraceThread struct {
+	ID      uint          `json:"id"`
+	Records []TraceRecord `json:"records"`
+	Threads []TraceThread `json:"threads"`
 }
 
-type MessageRecord struct {
-	ID   uint         `json:"id"`
-	Rows []MessageRow `json:"rows"`
+type TraceRecord struct {
+	ID   uint       `json:"id"`
+	Rows []TraceRow `json:"rows"`
 }
 
-type MessageRow struct {
+type TraceRow struct {
 	ID    uint   `json:"id"`
 	DT    string `json:"dt"`
 	Level string `json:"level"`
