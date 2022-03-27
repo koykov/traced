@@ -134,9 +134,7 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 		}
 		msg.Services = append(msg.Services, TraceService{ID: svc})
 		svci := &msg.Services[len(msg.Services)-1]
-		svci.Threads = append(svci.Threads, TraceThread{ID: 0})
-		thr := &svci.Threads[len(svci.Threads)-1]
-		if err = dbWalkThr(ctx, id, svc, thr); err != nil {
+		if err = dbWalkThr(ctx, id, svci); err != nil {
 			return
 		}
 	}
@@ -144,32 +142,55 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 	return
 }
 
-func dbWalkThr(ctx context.Context, id, svc string, thr *TraceThread) error {
-	query := "select id, tid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? and thid=? order by ts"
+func dbWalkThr(ctx context.Context, id string, svc *TraceService) error {
+	query := "select id, tid, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? order by ts"
 	var (
 		rows *sql.Rows
 		err  error
 	)
-	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id, svc, thr.ID); err != nil {
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id, svc.ID); err != nil {
 		return err
 	}
 	defer func() { _ = rows.Close() }()
 	crid := -1
 	for rows.Next() {
 		var (
-			id1, rid, lvl, typ uint
-			ts                 int64
-			tid, nm, val       string
+			id1, thid, rid, lvl, typ uint
+			ts                       int64
+			tid, nm, val             string
 		)
-		if err = rows.Scan(&id1, &tid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+		if err = rows.Scan(&id1, &tid, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
 			return err
+		}
+
+		if et := traceID.EntryType(typ); et == traceID.EntryAcquireThread || et == traceID.EntryReleaseThread {
+			var thid1 uint64
+			if thid1, err = strconv.ParseUint(val, 10, 64); err != nil {
+				return err
+			}
+			rec := TraceRecord{
+				ID:       0,
+				ThreadID: thid,
+				ChildID:  uint(thid1),
+				Thread: &TraceRow{
+					ID:    id1,
+					DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+					Level: traceID.LogLevel(lvl).String(),
+					Type:  traceID.EntryType(typ).String(),
+				},
+			}
+			svc.Records = append(svc.Records, rec)
+			continue
 		}
 
 		if crid != int(rid) {
 			crid = int(rid)
-			thr.Records = append(thr.Records, TraceRecord{ID: rid})
+			svc.Records = append(svc.Records, TraceRecord{
+				ID:       rid,
+				ThreadID: thid,
+			})
 		}
-		ri := &thr.Records[len(thr.Records)-1]
+		ri := &svc.Records[len(svc.Records)-1]
 		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
@@ -178,18 +199,6 @@ func dbWalkThr(ctx context.Context, id, svc string, thr *TraceThread) error {
 			Name:  nm,
 			Value: val,
 		})
-
-		if typ == uint(traceID.EntryAcquireThread) {
-			thid, err := strconv.ParseUint(val, 10, 64)
-			if err != nil {
-				return err
-			}
-			thr.Threads = append(thr.Threads, TraceThread{ID: uint(thid)})
-			thr1 := &thr.Threads[len(thr.Threads)-1]
-			if err := dbWalkThr(ctx, id, svc, thr1); err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }

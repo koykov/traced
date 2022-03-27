@@ -12,18 +12,15 @@ type TraceTree struct {
 
 type TraceService struct {
 	ID      string
-	Threads []TraceThread `json:"threads"`
-}
-
-type TraceThread struct {
-	ID      uint          `json:"id"`
 	Records []TraceRecord `json:"records"`
-	Threads []TraceThread `json:"threads"`
 }
 
 type TraceRecord struct {
-	ID   uint       `json:"id"`
-	Rows []TraceRow `json:"rows"`
+	ID       uint       `json:"id"`
+	ThreadID uint       `json:"threadID"`
+	ChildID  uint       `json:"childID,omitempty"`
+	Thread   *TraceRow  `json:"thread,omitempty"`
+	Rows     []TraceRow `json:"rows,omitempty"`
 }
 
 type TraceRow struct {
@@ -32,5 +29,5 @@ type TraceRow struct {
 	Level string `json:"level"`
 	Type  string `json:"type"`
 	Name  string `json:"name,omitempty"`
-	Value string `json:"value"`
+	Value string `json:"value,omitempty"`
 }
