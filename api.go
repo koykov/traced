@@ -57,6 +57,10 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			resp.Error = err.Error()
 			return
 		}
+		if len(msg.Services) == 0 {
+			resp.Status = http.StatusNotFound
+			return
+		}
 		resp.Payload = msg
 
 	default:
