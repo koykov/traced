@@ -134,7 +134,7 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 		}
 		msg.Services = append(msg.Services, TraceService{ID: svc})
 		svci := &msg.Services[len(msg.Services)-1]
-		if err = dbWalkThr(ctx, id, svci); err != nil {
+		if err = dbWalkSvc(ctx, id, svci); err != nil {
 			return
 		}
 	}
@@ -142,7 +142,7 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 	return
 }
 
-func dbWalkThr(ctx context.Context, id string, svc *TraceService) error {
+func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 	query := "select id, tid, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? order by ts"
 	var (
 		rows *sql.Rows
@@ -164,6 +164,9 @@ func dbWalkThr(ctx context.Context, id string, svc *TraceService) error {
 		}
 
 		if et := traceID.EntryType(typ); et == traceID.EntryAcquireThread || et == traceID.EntryReleaseThread {
+			if et == traceID.EntryAcquireThread {
+				svc.Threads++
+			}
 			var thid1 uint64
 			if thid1, err = strconv.ParseUint(val, 10, 64); err != nil {
 				return err

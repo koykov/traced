@@ -12,6 +12,7 @@ type TraceTree struct {
 
 type TraceService struct {
 	ID      string
+	Threads uint          `json:"threads"`
 	Records []TraceRecord `json:"records"`
 }
 
