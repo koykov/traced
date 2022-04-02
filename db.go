@@ -178,7 +178,7 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 				Thread: &TraceRow{
 					ID:    id1,
 					DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
-					Level: traceID.LogLevel(lvl).String(),
+					Level: traceID.Level(lvl).String(),
 					Type:  traceID.EntryType(typ).String(),
 				},
 			}
@@ -197,7 +197,7 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
-			Level: traceID.LogLevel(lvl).String(),
+			Level: traceID.Level(lvl).String(),
 			Type:  traceID.EntryType(typ).String(),
 			Name:  nm,
 			Value: val,
