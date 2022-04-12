@@ -8,7 +8,9 @@ github.com/koykov/entry v0.0.0-20220113212913-c30c9b7ad1e6 h1:htAQsjCeHfHjRpHUKP
 github.com/koykov/entry v0.0.0-20220113212913-c30c9b7ad1e6/go.mod h1:WmCy/YM0sPb4ETL9wYY0OJwO89KJ7qeQPGOwLUG4rZU=
 github.com/koykov/fastconv v0.0.0-20211028200057-f6897ace3bc2 h1:jIlvXIudUQ6ER2y/oExe8Qa3lnZ+6C0BpPthjfDhxvs=
 github.com/koykov/fastconv v0.0.0-20211028200057-f6897ace3bc2/go.mod h1:JXdtdh0aCcSmxLsVUoYP61lmxpL6dWOXEKxCIR+MlGg=
-github.com/koykov/traceID v0.0.0-20220401204943-a4483656bd63 h1:jdv31qLopRJRUkfc/yjQJTK370oRYqC1AJv0+E3aI0c=
-github.com/koykov/traceID v0.0.0-20220401204943-a4483656bd63/go.mod h1:Ez04l8MIOpvj2DyoMDaEzNuyo99Nlirqy2WiwvgYzrs=
-github.com/lib/pq v1.10.4 h1:SO9z7FRPzA03QhHKJrH5BXA6HU1rS4V2nIVrrNC1iYk=
-github.com/lib/pq v1.10.4/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
+github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17 h1:K9ITvibI9twy8SMQzgmJH480JQAHg8lb3UPMZeijr+U=
+github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17/go.mod h1:2qWC0hrIHIexlKaqPA0VWEa0s2V/qxxNJv7XPncnh2I=
+github.com/koykov/traceID v0.0.0-20220412194753-ef4a23754cf5 h1:NoXwSfDDUgua8Kx/lHDck9iNIvHD2l3+ivGkhmkD8ZY=
+github.com/koykov/traceID v0.0.0-20220412194753-ef4a23754cf5/go.mod h1:Fd6yR0hpK1DEEsX4cVYYNRZXvxfGz1oh1DzrNML/O+4=
+github.com/lib/pq v1.10.5 h1:J+gdV2cUmX7ZqL2B0lFcW0m+egaHC2V3lpO8nWxyYiQ=
+github.com/lib/pq v1.10.5/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
