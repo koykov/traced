@@ -203,6 +203,9 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 			Value: val,
 		})
 	}
+	if svc.Threads == 0 {
+		svc.Threads = 1
+	}
 	return nil
 }
 
