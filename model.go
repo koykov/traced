@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 type TraceHeader struct {
 	ID string `json:"id"`
 	DT string `json:"dt"`
@@ -25,10 +27,20 @@ type TraceRecord struct {
 }
 
 type TraceRow struct {
-	ID    uint   `json:"id"`
-	DT    string `json:"dt"`
-	Level string `json:"level"`
-	Type  string `json:"type"`
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	ID     uint     `json:"id"`
+	DT     string   `json:"dt,omitempty"`
+	Level  string   `json:"level"`
+	Levels []string `json:"levels,omitempty"`
+	Type   string   `json:"type,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Value  string   `json:"value,omitempty"`
+}
+
+func applyPlaceholders(record *TraceRecord) {
+	title := record.Rows[0].Value
+	for i := 1; i < len(record.Rows); i++ {
+		v, r := "{"+record.Rows[i].Name+"}", record.Rows[i].Value
+		title = strings.ReplaceAll(title, v, r)
+	}
+	record.Rows[0].Value = title
 }

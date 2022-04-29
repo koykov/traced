@@ -16,7 +16,8 @@ type TraceResponse struct {
 }
 
 var (
-	reTraceView = regexp.MustCompile(`/api/v\d+/view/(.*)`)
+	reTraceView  = regexp.MustCompile(`/api/v\d+/trace/(.*)`)
+	reRecordView = regexp.MustCompile(`/api/v\d+/record/(\d+)`)
 )
 
 func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +41,7 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/v1/ping":
 		resp.Payload = "pong"
 
-	case r.URL.Path == "/api/v1/list":
+	case r.URL.Path == "/api/v1/traces":
 		rows, err := dbTraceList(context.Background(), "", 0)
 		if err != nil {
 			resp.Status = http.StatusInternalServerError
@@ -62,6 +63,16 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		resp.Payload = tree
+
+	case reRecordView.MatchString(r.URL.Path):
+		m := reRecordView.FindStringSubmatch(r.URL.Path)
+		record, err := dbTraceRecord(context.Background(), m[1])
+		if err != nil {
+			resp.Status = http.StatusInternalServerError
+			resp.Error = err.Error()
+			return
+		}
+		resp.Payload = record
 
 	default:
 		resp.Status = http.StatusNotFound

@@ -211,14 +211,6 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 		svc.Threads = 1
 	}
 
-	applyPlaceholders := func(record *TraceRecord) {
-		title := record.Rows[0].Value
-		for i := 1; i < len(record.Rows); i++ {
-			v, r := "{"+record.Rows[i].Name+"}", record.Rows[i].Value
-			title = strings.ReplaceAll(title, v, r)
-		}
-		record.Rows[0].Value = title
-	}
 	for i := 0; i < len(svc.Records); i++ {
 		rec := &svc.Records[i]
 		if len(rec.Rows) == 0 {
@@ -231,6 +223,63 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 		applyPlaceholders(rec)
 	}
 	return nil
+}
+
+func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error) {
+	id64, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return
+	}
+
+	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, rid from trace_log where id=?"), id64)
+	var (
+		tid string
+		svc string
+		rid int
+	)
+	if err = row.Scan(&tid, &svc, &rid); len(tid) == 0 || len(svc) == 0 || rid == 0 || err == sql.ErrNoRows {
+		return
+	}
+
+	query := "select id, thid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? and rid=? order by ts"
+	var rows *sql.Rows
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), tid, svc, rid); err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
+	rec = &TraceRecord{ID: uint(id64)}
+	for rows.Next() {
+		var (
+			id1, thid, lvl, typ uint
+			ts                  int64
+			nm, val             string
+		)
+		if err = rows.Scan(&id1, &thid, &ts, &lvl, &typ, &nm, &val); err != nil {
+			return
+		}
+		et := traceID.EntryType(typ)
+		if et == traceID.EntryChapter {
+			rec.ThreadID = thid
+			rec.Rows = append(rec.Rows, TraceRow{
+				ID:    id1,
+				DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+				Level: traceID.Level(lvl).First().String(),
+				Type:  traceID.EntryType(typ).String(),
+				Name:  nm,
+				Value: val,
+			})
+		} else {
+			rec.Rows = append(rec.Rows, TraceRow{
+				ID:    id1,
+				Level: traceID.Level(lvl).First().String(),
+				Name:  nm,
+				Value: val,
+			})
+		}
+	}
+	applyPlaceholders(rec)
+
+	return
 }
 
 func dbClose() error {
