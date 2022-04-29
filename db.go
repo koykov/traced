@@ -153,6 +153,7 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 	}
 	defer func() { _ = rows.Close() }()
 	crid := -1
+	recIdx := make(map[int]*TraceRecord)
 	for rows.Next() {
 		var (
 			id1, thid, rid, lvl, typ uint
@@ -188,12 +189,15 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 
 		if crid != int(rid) {
 			crid = int(rid)
-			svc.Records = append(svc.Records, TraceRecord{
-				ID:       rid,
-				ThreadID: thid,
-			})
+			if _, ok := recIdx[crid]; !ok {
+				svc.Records = append(svc.Records, TraceRecord{
+					ID:       rid,
+					ThreadID: thid,
+				})
+				recIdx[crid] = &svc.Records[len(svc.Records)-1]
+			}
 		}
-		ri := &svc.Records[len(svc.Records)-1]
+		ri := recIdx[crid]
 		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
