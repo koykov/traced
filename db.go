@@ -210,6 +210,26 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 	if svc.Threads == 0 {
 		svc.Threads = 1
 	}
+
+	applyPlaceholders := func(record *TraceRecord) {
+		title := record.Rows[0].Value
+		for i := 1; i < len(record.Rows); i++ {
+			v, r := "{"+record.Rows[i].Name+"}", record.Rows[i].Value
+			title = strings.ReplaceAll(title, v, r)
+		}
+		record.Rows[0].Value = title
+	}
+	for i := 0; i < len(svc.Records); i++ {
+		rec := &svc.Records[i]
+		if len(rec.Rows) == 0 {
+			continue
+		}
+		row := &rec.Rows[0]
+		if strings.Index(row.Value, "{") == -1 || strings.Index(row.Value, "}") == -1 {
+			continue
+		}
+		applyPlaceholders(rec)
+	}
 	return nil
 }
 
