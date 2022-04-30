@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/koykov/traceID"
+)
 
 type TraceHeader struct {
 	ID string `json:"id"`
@@ -43,4 +47,26 @@ func applyPlaceholders(record *TraceRecord) {
 		title = strings.ReplaceAll(title, v, r)
 	}
 	record.Rows[0].Value = title
+}
+
+func splitLevelLabels(level traceID.Level) (l []string) {
+	if level&traceID.LevelDebug > 0 {
+		l = append(l, traceID.LevelDebug.String())
+	}
+	if level&traceID.LevelInfo > 0 {
+		l = append(l, traceID.LevelInfo.String())
+	}
+	if level&traceID.LevelWarn > 0 {
+		l = append(l, traceID.LevelWarn.String())
+	}
+	if level&traceID.LevelError > 0 {
+		l = append(l, traceID.LevelError.String())
+	}
+	if level&traceID.LevelFatal > 0 {
+		l = append(l, traceID.LevelFatal.String())
+	}
+	if level&traceID.LevelAssert > 0 {
+		l = append(l, traceID.LevelAssert.String())
+	}
+	return l
 }

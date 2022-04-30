@@ -261,12 +261,12 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		if et == traceID.EntryChapter {
 			rec.ThreadID = thid
 			rec.Rows = append(rec.Rows, TraceRow{
-				ID:    id1,
-				DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
-				Level: traceID.Level(lvl).First().String(),
-				Type:  traceID.EntryType(typ).String(),
-				Name:  nm,
-				Value: val,
+				ID:     id1,
+				DT:     string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+				Levels: splitLevelLabels(traceID.Level(lvl)),
+				Type:   traceID.EntryType(typ).String(),
+				Name:   nm,
+				Value:  val,
 			})
 		} else {
 			rec.Rows = append(rec.Rows, TraceRow{
