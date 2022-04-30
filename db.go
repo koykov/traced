@@ -238,7 +238,7 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		thid uint
 		rid  int
 	)
-	if err = row.Scan(&tid, &svc, &thid, &rid); len(tid) == 0 || len(svc) == 0 || rid == 0 || err == sql.ErrNoRows {
+	if err = row.Scan(&tid, &svc, &thid, &rid); len(tid) == 0 || len(svc) == 0 || err == sql.ErrNoRows {
 		return
 	}
 
