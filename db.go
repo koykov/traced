@@ -231,13 +231,14 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		return
 	}
 
-	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, rid from trace_log where id=?"), id64)
+	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, thid, rid from trace_log where id=?"), id64)
 	var (
-		tid string
-		svc string
-		rid int
+		tid  string
+		svc  string
+		thid uint
+		rid  int
 	)
-	if err = row.Scan(&tid, &svc, &rid); len(tid) == 0 || len(svc) == 0 || rid == 0 || err == sql.ErrNoRows {
+	if err = row.Scan(&tid, &svc, &thid, &rid); len(tid) == 0 || len(svc) == 0 || rid == 0 || err == sql.ErrNoRows {
 		return
 	}
 
@@ -247,7 +248,10 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		return
 	}
 	defer func() { _ = rows.Close() }()
-	rec = &TraceRecord{ID: uint(id64)}
+	rec = &TraceRecord{
+		ID:       uint(id64),
+		ThreadID: thid,
+	}
 	for rows.Next() {
 		var (
 			id1, thid, lvl, typ uint
@@ -258,7 +262,7 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 			return
 		}
 		et := traceID.EntryType(typ)
-		if et == traceID.EntryChapter {
+		if et == traceID.EntryChapter || et == traceID.EntryAcquireThread || et == traceID.EntryReleaseThread {
 			rec.ThreadID = thid
 			rec.Rows = append(rec.Rows, TraceRow{
 				ID:     id1,
@@ -270,10 +274,10 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 			})
 		} else {
 			rec.Rows = append(rec.Rows, TraceRow{
-				ID:    id1,
-				Level: traceID.Level(lvl).First().String(),
-				Name:  nm,
-				Value: val,
+				ID:     id1,
+				Levels: splitLevelLabels(traceID.Level(lvl)),
+				Name:   nm,
+				Value:  val,
 			})
 		}
 	}
