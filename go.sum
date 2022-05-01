@@ -10,8 +10,8 @@ github.com/koykov/fastconv v0.0.0-20211028200057-f6897ace3bc2 h1:jIlvXIudUQ6ER2y
 github.com/koykov/fastconv v0.0.0-20211028200057-f6897ace3bc2/go.mod h1:JXdtdh0aCcSmxLsVUoYP61lmxpL6dWOXEKxCIR+MlGg=
 github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17 h1:K9ITvibI9twy8SMQzgmJH480JQAHg8lb3UPMZeijr+U=
 github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17/go.mod h1:2qWC0hrIHIexlKaqPA0VWEa0s2V/qxxNJv7XPncnh2I=
-github.com/koykov/traceID v0.0.0-20220429224847-66d2aec26d20 h1:8iw8fYbIC5PiOOWdYWyaA55np3RVL6QXuWnVOtTBK9Q=
-github.com/koykov/traceID v0.0.0-20220429224847-66d2aec26d20/go.mod h1:32aLKA2sTpxENvChKzFFNMzvlWQ84Zzqxf1cM2hXFkI=
+github.com/koykov/traceID v0.0.0-20220501201000-6e67e6daf9c9 h1:tVtV5MS0GMzdEjyE8stHvQOS1W3z5Zs+gf7Q9BDdG7g=
+github.com/koykov/traceID v0.0.0-20220501201000-6e67e6daf9c9/go.mod h1:32aLKA2sTpxENvChKzFFNMzvlWQ84Zzqxf1cM2hXFkI=
 github.com/koykov/x2bytes v0.0.0-20211030173929-204cb7cc5e84 h1:63PXDfdREZrUYLsuYfdeNvZcMawd51C5U/iONVd4L5M=
 github.com/koykov/x2bytes v0.0.0-20211030173929-204cb7cc5e84/go.mod h1:WYC0GA70RW4XAE3FRTVCYmC8UhHO3LEm26g795qn7Jo=
 github.com/lib/pq v1.10.5 h1:J+gdV2cUmX7ZqL2B0lFcW0m+egaHC2V3lpO8nWxyYiQ=
