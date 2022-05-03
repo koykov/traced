@@ -27,6 +27,11 @@ var (
 			l.SetConfig(conf)
 			return &l
 		},
+		"zeromq": func(conf *traceID.ListenerConfig) traceID.Listener {
+			l := listener.ZeroMQ{}
+			l.SetConfig(conf)
+			return &l
+		},
 	}
 	lsRepo listenerRepo
 )
