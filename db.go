@@ -283,6 +283,21 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 	}
 	applyPlaceholders(rec)
 
+	query = `select id from trace_log
+where tid=? and svc=? and thid=? and rid!=? and id<?
+group by id
+order by rid desc
+limit 1`
+	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, thid, rid, id64)
+	_ = row.Scan(&rec.Prev)
+	query = `select id from trace_log
+where tid=? and svc=? and thid=? and rid!=? and id>?
+group by id
+order by rid
+limit 1`
+	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, thid, rid, id64)
+	_ = row.Scan(&rec.Next)
+
 	return
 }
 

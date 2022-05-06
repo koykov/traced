@@ -28,6 +28,8 @@ type TraceRecord struct {
 	ChildID  uint       `json:"childID,omitempty"`
 	Thread   *TraceRow  `json:"thread,omitempty"`
 	Rows     []TraceRow `json:"rows,omitempty"`
+	Prev     uint       `json:"prev,omitempty"`
+	Next     uint       `json:"next,omitempty"`
 }
 
 type TraceRow struct {
