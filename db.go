@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -70,8 +71,8 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		k := fastconv.B2S(msg.Buf[lo:hi])
 		lo, hi = row.Value.Decode()
 		v := fastconv.B2S(msg.Buf[lo:hi])
-		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"),
-			msg.ID, msg.Service, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
+		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, stg, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+			msg.ID, msg.Service, msg.Stage, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
 		if err != nil {
 			return
 		}
@@ -91,7 +92,8 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 func dbCheckExists(ctx context.Context, tx *sql.Tx, id string) bool {
 	row := tx.QueryRowContext(ctx, fmtQuery("select count(ts) as c from trace_uniq where tid=?"), id)
 	var c int
-	if err := row.Scan(&c); c == 0 || err == sql.ErrNoRows {
+	_ = row.Scan(&c)
+	if c > 0 {
 		return true
 	}
 	return false
@@ -152,7 +154,7 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 }
 
 func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
-	query := "select id, tid, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? order by ts"
+	query := "select id, tid, stg, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? order by ts"
 	var (
 		rows *sql.Rows
 		err  error
@@ -162,20 +164,30 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 	}
 	defer func() { _ = rows.Close() }()
 	crid := -1
-	recIdx := make(map[int]*TraceRecord)
+	stgIdx := make(map[string]*TraceStage)
+	recIdx := make(map[string]*TraceRecord)
+	var stgi *TraceStage
 	for rows.Next() {
 		var (
 			id1, thid, rid, lvl, typ uint
 			ts                       int64
-			tid, nm, val             string
+			stg, tid, nm, val        string
 		)
-		if err = rows.Scan(&id1, &tid, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+		if err = rows.Scan(&id1, &tid, &stg, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
 			return err
 		}
+		if len(stg) == 0 {
+			stg = "default"
+		}
+		if _, ok := stgIdx[stg]; !ok {
+			svc.Stages = append(svc.Stages, TraceStage{ID: stg})
+			stgIdx[stg] = &svc.Stages[len(svc.Stages)-1]
+		}
+		stgi = stgIdx[stg]
 
 		if et := traceID.EntryType(typ); et == traceID.EntryAcquireThread || et == traceID.EntryReleaseThread {
 			if et == traceID.EntryAcquireThread {
-				svc.Threads++
+				stgi.Threads++
 			}
 			var thid1 uint64
 			if thid1, err = strconv.ParseUint(val, 10, 64); err != nil {
@@ -192,21 +204,22 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 					Type:  traceID.EntryType(typ).String(),
 				},
 			}
-			svc.Records = append(svc.Records, rec)
+			stgi.Records = append(stgi.Records, rec)
 			continue
 		}
 
 		if crid != int(rid) {
 			crid = int(rid)
-			if _, ok := recIdx[crid]; !ok {
-				svc.Records = append(svc.Records, TraceRecord{
+			key := fmt.Sprintf("%s/%d", stg, crid)
+			if _, ok := recIdx[key]; !ok {
+				stgi.Records = append(stgi.Records, TraceRecord{
 					ID:       rid,
 					ThreadID: thid,
 				})
-				recIdx[crid] = &svc.Records[len(svc.Records)-1]
+				recIdx[key] = &stgi.Records[len(stgi.Records)-1]
 			}
 		}
-		ri := recIdx[crid]
+		ri := recIdx[fmt.Sprintf("%s/%d", stg, crid)]
 		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
@@ -216,20 +229,23 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 			Value: val,
 		})
 	}
-	if svc.Threads == 0 {
-		svc.Threads = 1
-	}
+	for i := 0; i < len(svc.Stages); i++ {
+		stgi = &svc.Stages[i]
+		if stgi.Threads == 0 {
+			stgi.Threads = 1
+		}
 
-	for i := 0; i < len(svc.Records); i++ {
-		rec := &svc.Records[i]
-		if len(rec.Rows) == 0 {
-			continue
+		for j := 0; j < len(stgi.Records); j++ {
+			rec := &stgi.Records[j]
+			if len(rec.Rows) == 0 {
+				continue
+			}
+			row := &rec.Rows[0]
+			if strings.Index(row.Value, "{") == -1 || strings.Index(row.Value, "}") == -1 {
+				continue
+			}
+			applyPlaceholders(rec)
 		}
-		row := &rec.Rows[0]
-		if strings.Index(row.Value, "{") == -1 || strings.Index(row.Value, "}") == -1 {
-			continue
-		}
-		applyPlaceholders(rec)
 	}
 	return nil
 }
