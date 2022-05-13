@@ -53,6 +53,8 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		}
 	}(tx, err)
 
+	exists := dbCheckExists(ctx, tx, msg.ID)
+
 	if msg.CheckFlag(traceID.FlagOverwrite) {
 		if _, err = tx.ExecContext(ctx, fmtQuery("delete from trace_log where tid = ?"), msg.ID); err != nil {
 			return
@@ -75,9 +77,7 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		}
 	}
 
-	row := tx.QueryRowContext(ctx, fmtQuery("select count(ts) as c from trace_uniq where tid=?"), msg.ID)
-	var c int
-	if err = row.Scan(&c); c == 0 || err == sql.ErrNoRows {
+	if !exists {
 		mustNotify = true
 		if _, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano()); err != nil {
 			return
@@ -86,6 +86,15 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 
 	err = tx.Commit()
 	return
+}
+
+func dbCheckExists(ctx context.Context, tx *sql.Tx, id string) bool {
+	row := tx.QueryRowContext(ctx, fmtQuery("select count(ts) as c from trace_uniq where tid=?"), id)
+	var c int
+	if err := row.Scan(&c); c == 0 || err == sql.ErrNoRows {
+		return true
+	}
+	return false
 }
 
 func dbTraceList(ctx context.Context, pattern string, limit uint) (r []TraceHeader, err error) {
