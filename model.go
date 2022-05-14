@@ -75,5 +75,8 @@ func splitLevelLabels(level traceID.Level) (l []string) {
 	if level&traceID.LevelAssert > 0 {
 		l = append(l, traceID.LevelAssert.String())
 	}
+	if level&traceID.LevelComment > 0 {
+		l = append(l, traceID.LevelComment.String())
+	}
 	return l
 }
