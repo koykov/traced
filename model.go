@@ -22,7 +22,7 @@ type TraceService struct {
 }
 
 type TraceStage struct {
-	ID      string
+	ID      string        `json:"id"`
 	Threads uint          `json:"threads"`
 	Records []TraceRecord `json:"records"`
 }
