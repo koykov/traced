@@ -66,25 +66,26 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		}
 	}
 
+	var stage string
 	for i := 0; i < len(msg.Rows); i++ {
 		row := &msg.Rows[i]
 		lo, hi := row.Key.Decode()
 		k := fastconv.B2S(msg.Buf[lo:hi])
 		lo, hi = row.Value.Decode()
 		v := fastconv.B2S(msg.Buf[lo:hi])
+		if row.Type == traceID.EntryStage {
+			stage = v
+			continue
+		}
 		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, stg, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
-			msg.ID, msg.Service, msg.Stage, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
+			msg.ID, msg.Service, stage, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
 		if err != nil {
 			return
 		}
 	}
 
-	if !exists {
-		mustNotify = true
-		if _, err = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano()); err != nil {
-			return
-		}
-	}
+	mustNotify = !exists
+	_, _ = tx.ExecContext(ctx, fmtQuery("insert into trace_uniq(tid, ts) values(?, ?)"), msg.ID, time.Now().UnixNano())
 
 	err = tx.Commit()
 	return
