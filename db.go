@@ -57,10 +57,6 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 
 	exists := dbCheckExists(ctx, tx, msg.ID)
 	ovr := msg.CheckFlag(traceID.FlagOverwrite)
-	if exists && !ovr {
-		err = fmt.Errorf("trace '%s' exists", msg.ID)
-		return
-	}
 
 	if ovr {
 		if _, err = tx.ExecContext(ctx, fmtQuery("delete from trace_log where tid = ?"), msg.ID); err != nil {
