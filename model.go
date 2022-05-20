@@ -35,6 +35,7 @@ type TraceRecord struct {
 	Rows     []TraceRow `json:"rows,omitempty"`
 	Prev     uint       `json:"prev,omitempty"`
 	Next     uint       `json:"next,omitempty"`
+	ThreadIn uint       `json:"threadIn,omitempty"`
 }
 
 type TraceRow struct {

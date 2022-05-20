@@ -259,15 +259,17 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		return
 	}
 
-	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, stg, thid, rid from trace_log where id=?"), id64)
+	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, stg, thid, rid, ts from trace_log where id=?"), id64)
 	var (
 		tid  string
 		svc  string
 		stg  string
 		thid uint
+		thin uint
 		rid  int
+		ts   uint
 	)
-	if err = row.Scan(&tid, &svc, &stg, &thid, &rid); len(tid) == 0 || len(svc) == 0 || err == sql.ErrNoRows {
+	if err = row.Scan(&tid, &svc, &stg, &thid, &rid, &ts); len(tid) == 0 || len(svc) == 0 || err == sql.ErrNoRows {
 		return
 	}
 
@@ -305,6 +307,11 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 				Name:   nm,
 				Value:  val,
 			})
+			if et == traceID.EntryAcquireThread {
+				if u64, err := strconv.ParseUint(val, 10, 64); err == nil {
+					thin = uint(u64)
+				}
+			}
 		} else {
 			rec.Rows = append(rec.Rows, TraceRow{
 				ID:     id1,
@@ -317,19 +324,29 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 	applyPlaceholders(rec)
 
 	query = fmt.Sprintf(`select id from trace_log
-where tid=? and svc=? %s and thid=? and rid!=? and id<?
+where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts<=?
 group by id
 order by rid desc
 limit 1`, stgQuery)
-	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64)
+	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
 	_ = row.Scan(&rec.Prev)
+
 	query = fmt.Sprintf(`select id from trace_log
-where tid=? and svc=? %s and thid=? and rid!=? and id>?
+where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts>=?
 group by id
 order by rid
 limit 1`, stgQuery)
-	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64)
+	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
 	_ = row.Scan(&rec.Next)
+
+	if thin > 0 {
+		query = fmt.Sprintf(`select id from trace_log
+where tid=? and svc=? %s and thid=?
+order by ts
+limit 1`, stgQuery)
+		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thin)
+		_ = row.Scan(&rec.ThreadIn)
+	}
 
 	return
 }
