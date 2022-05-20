@@ -338,6 +338,15 @@ order by rid
 limit 1`, stgQuery)
 	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
 	_ = row.Scan(&rec.Next)
+	// Try to get release record.
+	if rec.Next == 0 && thid > 0 {
+		query = fmt.Sprintf(`select id from trace_log
+where tid=? and svc=? %s and typ=? and val=?
+order by ts
+limit 1`, stgQuery)
+		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, traceID.EntryReleaseThread, thid)
+		_ = row.Scan(&rec.Next)
+	}
 
 	if thin > 0 {
 		query = fmt.Sprintf(`select id from trace_log
