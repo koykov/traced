@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -23,6 +24,7 @@ const (
 var (
 	dbi *sql.DB
 	qpt string
+	mux sync.Mutex
 )
 
 func dbConnect(dbc *DBConfig) (err error) {
@@ -45,6 +47,9 @@ func dbConnect(dbc *DBConfig) (err error) {
 }
 
 func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err error) {
+	mux.Lock()
+	defer mux.Unlock()
+
 	var tx *sql.Tx
 	if tx, err = dbi.Begin(); err != nil {
 		return
