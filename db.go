@@ -67,6 +67,8 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 		}
 	}
 
+	mid := dbMaxMessageID(ctx, tx) + 1
+
 	var stage string
 	for i := 0; i < len(msg.Rows); i++ {
 		row := &msg.Rows[i]
@@ -78,8 +80,8 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 			stage = v
 			continue
 		}
-		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, stg, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
-			msg.ID, msg.Service, stage, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
+		_, err = tx.ExecContext(ctx, fmtQuery("insert into trace_log(tid, svc, stg, mid, thid, rid, ts, lvl, typ, nm, val) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"),
+			msg.ID, msg.Service, stage, mid, row.ThreadID, row.RecordID, row.Time, row.Level, row.Type, k, v)
 		if err != nil {
 			return
 		}
@@ -100,6 +102,12 @@ func dbCheckExists(ctx context.Context, tx *sql.Tx, id string) bool {
 		return true
 	}
 	return false
+}
+
+func dbMaxMessageID(ctx context.Context, tx *sql.Tx) (m uint) {
+	row := tx.QueryRowContext(ctx, "select max(mid) as m from trace_log")
+	_ = row.Scan(&m)
+	return
 }
 
 func dbTraceList(ctx context.Context, pattern string, limit uint) (r []TraceHeader, err error) {
@@ -259,17 +267,12 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		return
 	}
 
-	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, stg, thid, rid, ts from trace_log where id=?"), id64)
+	row := dbi.QueryRowContext(ctx, fmtQuery("select tid, svc, stg, mid, thid, rid, ts from trace_log where id=?"), id64)
 	var (
-		tid  string
-		svc  string
-		stg  string
-		thid uint
-		thin uint
-		rid  int
-		ts   uint
+		tid, svc, stg            string
+		mid, thid, thin, rid, ts uint
 	)
-	if err = row.Scan(&tid, &svc, &stg, &thid, &rid, &ts); len(tid) == 0 || len(svc) == 0 || err == sql.ErrNoRows {
+	if err = row.Scan(&tid, &svc, &stg, &mid, &thid, &rid, &ts); len(tid) == 0 || len(svc) == 0 || err == sql.ErrNoRows {
 		return
 	}
 
@@ -277,9 +280,9 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 	if stg == defaultStg {
 		stgQuery = "and stg in ('', ?)"
 	}
-	query := fmt.Sprintf("select id, thid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? %s and rid=? order by ts", stgQuery)
+	query := fmt.Sprintf("select id, thid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? %s and mid=? and rid=? order by ts", stgQuery)
 	var rows *sql.Rows
-	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), tid, svc, stg, rid); err != nil {
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), tid, svc, stg, mid, rid); err != nil {
 		return
 	}
 	defer func() { _ = rows.Close() }()
