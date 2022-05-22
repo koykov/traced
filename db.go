@@ -170,26 +170,27 @@ func dbTraceTree(ctx context.Context, id string) (msg *TraceTree, err error) {
 }
 
 func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
-	query := "select id, tid, stg, thid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? order by ts"
+	query := "select id, tid, stg, thid, mid, rid, ts, lvl, typ, nm, val from trace_log where tid=? and svc=? and typ!=? order by ts"
 	var (
 		rows *sql.Rows
 		err  error
 	)
-	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id, svc.ID); err != nil {
+	if rows, err = dbi.QueryContext(ctx, fmtQuery(query), id, svc.ID, traceID.EntryLog); err != nil {
 		return err
 	}
 	defer func() { _ = rows.Close() }()
 	crid := -1
+	ckey := ""
 	stgIdx := make(map[string]*TraceStage)
 	recIdx := make(map[string]*TraceRecord)
 	var stgi *TraceStage
 	for rows.Next() {
 		var (
-			id1, thid, rid, lvl, typ uint
-			ts                       int64
-			stg, tid, nm, val        string
+			id1, thid, mid, rid, lvl, typ uint
+			ts                            int64
+			stg, tid, nm, val             string
 		)
-		if err = rows.Scan(&id1, &tid, &stg, &thid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
+		if err = rows.Scan(&id1, &tid, &stg, &thid, &mid, &rid, &ts, &lvl, &typ, &nm, &val); err != nil {
 			return err
 		}
 		if len(stg) == 0 {
@@ -224,9 +225,11 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 			continue
 		}
 
-		if crid != int(rid) {
+		key := fmt.Sprintf("%s/%d/%d", stg, mid, crid)
+		if ckey != key || crid != int(rid) {
 			crid = int(rid)
-			key := fmt.Sprintf("%s/%d", stg, crid)
+			key = fmt.Sprintf("%s/%d/%d", stg, mid, crid)
+			ckey = key
 			if _, ok := recIdx[key]; !ok {
 				stgi.Records = append(stgi.Records, TraceRecord{
 					ID:       rid,
@@ -235,7 +238,7 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 				recIdx[key] = &stgi.Records[len(stgi.Records)-1]
 			}
 		}
-		ri := recIdx[fmt.Sprintf("%s/%d", stg, crid)]
+		ri := recIdx[fmt.Sprintf("%s/%d/%d", stg, mid, crid)]
 		ri.Rows = append(ri.Rows, TraceRow{
 			ID:    id1,
 			DT:    string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
@@ -260,13 +263,16 @@ func dbWalkSvc(ctx context.Context, id string, svc *TraceService) error {
 			if strings.Index(row.Value, "{") == -1 || strings.Index(row.Value, "}") == -1 {
 				continue
 			}
-			applyPlaceholders(rec)
+			if rec1, err := dbTraceRecord(ctx, strconv.Itoa(int(row.ID)), true); err == nil {
+				rec = rec1
+				stgi.Records[j] = *rec
+			}
 		}
 	}
 	return nil
 }
 
-func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error) {
+func dbTraceRecord(ctx context.Context, id string, lite bool) (rec *TraceRecord, err error) {
 	id64, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
 		return
@@ -310,6 +316,7 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 			rec.Rows = append(rec.Rows, TraceRow{
 				ID:     id1,
 				DT:     string(time.Unix(ts/1e9, ts%1e9).AppendFormat(nil, time.RFC3339Nano)),
+				Level:  traceID.Level(lvl).First().String(),
 				Levels: splitLevelLabels(traceID.Level(lvl)),
 				Type:   traceID.EntryType(typ).String(),
 				Name:   nm,
@@ -323,6 +330,7 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 		} else {
 			rec.Rows = append(rec.Rows, TraceRow{
 				ID:     id1,
+				Level:  traceID.Level(lvl).First().String(),
 				Levels: splitLevelLabels(traceID.Level(lvl)),
 				Name:   nm,
 				Value:  val,
@@ -331,38 +339,40 @@ func dbTraceRecord(ctx context.Context, id string) (rec *TraceRecord, err error)
 	}
 	applyPlaceholders(rec)
 
-	query = fmt.Sprintf(`select id from trace_log
+	if !lite {
+		query = fmt.Sprintf(`select id from trace_log
 where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts<=?
 group by id
 order by rid desc
 limit 1`, stgQuery)
-	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
-	_ = row.Scan(&rec.Prev)
+		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
+		_ = row.Scan(&rec.Prev)
 
-	query = fmt.Sprintf(`select id from trace_log
+		query = fmt.Sprintf(`select id from trace_log
 where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts>=?
 group by id
 order by rid
 limit 1`, stgQuery)
-	row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
-	_ = row.Scan(&rec.Next)
-	// Try to get release record.
-	if rec.Next == 0 && thid > 0 {
-		query = fmt.Sprintf(`select id from trace_log
+		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
+		_ = row.Scan(&rec.Next)
+		// Try to get release record.
+		if rec.Next == 0 && thid > 0 {
+			query = fmt.Sprintf(`select id from trace_log
 where tid=? and svc=? %s and typ=? and val=?
 order by ts
 limit 1`, stgQuery)
-		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, traceID.EntryReleaseThread, thid)
-		_ = row.Scan(&rec.Next)
-	}
+			row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, traceID.EntryReleaseThread, thid)
+			_ = row.Scan(&rec.Next)
+		}
 
-	if thin > 0 {
-		query = fmt.Sprintf(`select id from trace_log
+		if thin > 0 {
+			query = fmt.Sprintf(`select id from trace_log
 where tid=? and svc=? %s and thid=?
 order by ts
 limit 1`, stgQuery)
-		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thin)
-		_ = row.Scan(&rec.ThreadIn)
+			row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thin)
+			_ = row.Scan(&rec.ThreadIn)
+		}
 	}
 
 	return

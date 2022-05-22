@@ -66,7 +66,7 @@ func (h *TraceHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case reRecordView.MatchString(r.URL.Path):
 		m := reRecordView.FindStringSubmatch(r.URL.Path)
-		record, err := dbTraceRecord(context.Background(), m[1])
+		record, err := dbTraceRecord(context.Background(), m[1], false)
 		if err != nil {
 			resp.Status = http.StatusInternalServerError
 			resp.Error = err.Error()
