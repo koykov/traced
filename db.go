@@ -343,17 +343,17 @@ func dbTraceRecord(ctx context.Context, id string, lite bool) (rec *TraceRecord,
 		query = fmt.Sprintf(`select id from trace_log
 where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts<=?
 group by id
-order by rid desc
+order by ts desc
 limit 1`, stgQuery)
 		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
 		_ = row.Scan(&rec.Prev)
 
 		query = fmt.Sprintf(`select id from trace_log
-where tid=? and svc=? %s and thid=? and rid!=? and id!=? and ts>=?
+where tid=? and svc=? %s and thid=? and rid!=? and id!=? and typ not in (?) and ts>=?
 group by id
-order by rid
+order by ts
 limit 1`, stgQuery)
-		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, ts)
+		row = dbi.QueryRowContext(ctx, fmtQuery(query), tid, svc, stg, thid, rid, id64, traceID.EntryLog, ts)
 		_ = row.Scan(&rec.Next)
 		// Try to get release record.
 		if rec.Next == 0 && thid > 0 {
