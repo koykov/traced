@@ -6,6 +6,7 @@ import (
 
 	"github.com/koykov/traceID"
 	"github.com/koykov/traceID/listener"
+	"github.com/koykov/tracemod/zeromq"
 )
 
 type listenerNewFn func(config *traceID.ListenerConfig) traceID.Listener
@@ -28,7 +29,7 @@ var (
 			return &l
 		},
 		"zeromq": func(conf *traceID.ListenerConfig) traceID.Listener {
-			l := listener.ZeroMQ{}
+			l := zeromq.Listener{}
 			l.SetConfig(conf)
 			return &l
 		},
