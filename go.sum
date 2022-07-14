@@ -12,8 +12,8 @@ github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17 h1:K9ITvibI9twy8SM
 github.com/koykov/indirect v0.0.0-20220403200712-f40904459e17/go.mod h1:2qWC0hrIHIexlKaqPA0VWEa0s2V/qxxNJv7XPncnh2I=
 github.com/koykov/traceID v0.0.0-20220708203036-1192add64baa h1:fWcPBYUbGZmPFsTxcZ7aITPoiFjMaufh/6j3C4t+gA8=
 github.com/koykov/traceID v0.0.0-20220708203036-1192add64baa/go.mod h1:SkrTP0/oaFDDKhdSbE39kuzE2d82nc87kjD+3z2LxZs=
-github.com/koykov/tracemod/zeromq v0.0.0-20220709194053-f81cb94250e1 h1:IbSepTEjRR2RSRS0BIg+BnzcZ1jAojnUErUyt4JJLeA=
-github.com/koykov/tracemod/zeromq v0.0.0-20220709194053-f81cb94250e1/go.mod h1:GEwbXt1R4P2hyMzhRnudZ5fETCCLqpxnval0okbORiE=
+github.com/koykov/tracemod/zeromq v0.0.0-20220714200636-d0674aaa3f7b h1:jveY6VBtMKazS5D+fghr4EMk06jXG40yq9aiom8cjKk=
+github.com/koykov/tracemod/zeromq v0.0.0-20220714200636-d0674aaa3f7b/go.mod h1:GEwbXt1R4P2hyMzhRnudZ5fETCCLqpxnval0okbORiE=
 github.com/koykov/x2bytes v0.0.0-20211030173929-204cb7cc5e84 h1:63PXDfdREZrUYLsuYfdeNvZcMawd51C5U/iONVd4L5M=
 github.com/koykov/x2bytes v0.0.0-20211030173929-204cb7cc5e84/go.mod h1:WYC0GA70RW4XAE3FRTVCYmC8UhHO3LEm26g795qn7Jo=
 github.com/lib/pq v1.10.6 h1:jbk+ZieJ0D7EVGJYpL9QTz7/YW6UHbmdnZWYyK5cdBs=
