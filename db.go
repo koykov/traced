@@ -40,6 +40,7 @@ func dbConnect(dbc *DBConfig) (err error) {
 	if dbi, err = sql.Open(dbc.Driver, dbc.DSN); err != nil {
 		return
 	}
+	dbi.SetConnMaxLifetime(time.Duration(dbc.MaxLT) * time.Second)
 	if err = dbi.Ping(); err != nil {
 		return
 	}

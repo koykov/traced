@@ -30,6 +30,7 @@ type DBConfig struct {
 	Driver string `json:"driver"`
 	DSN    string `json:"dsn"`
 	QPT    string `json:"qpt,omitempty"`
+	MaxLT  int    `json:"conn_max_lifetime,omitempty"`
 }
 
 func ParseConfig(filepath string) (*Config, error) {
