@@ -1,3 +1,9 @@
 .idea
 config/*.json
+config/*.env
+config/*.conf
+bin
 vendor
+logs
+shell
+run.sh
