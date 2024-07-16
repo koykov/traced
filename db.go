@@ -11,7 +11,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/koykov/fastconv"
+	"github.com/koykov/byteconv"
 	"github.com/koykov/traceID"
 	_ "github.com/lib/pq"
 )
@@ -79,9 +79,9 @@ func dbFlushMsg(ctx context.Context, msg *traceID.Message) (mustNotify bool, err
 	for i := 0; i < len(msg.Rows); i++ {
 		row := &msg.Rows[i]
 		lo, hi := row.Key.Decode()
-		k := fastconv.B2S(msg.Buf[lo:hi])
+		k := byteconv.B2S(msg.Buf[lo:hi])
 		lo, hi = row.Value.Decode()
-		v := fastconv.B2S(msg.Buf[lo:hi])
+		v := byteconv.B2S(msg.Buf[lo:hi])
 		if row.Type == traceID.EntryStage {
 			stage = v
 			continue
@@ -408,5 +408,5 @@ func fmtQuery(query string) string {
 		}
 	}
 	buf = append(buf, query...)
-	return fastconv.B2S(buf)
+	return byteconv.B2S(buf)
 }
